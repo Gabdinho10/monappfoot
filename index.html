@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Score Sports</title>
     
-    <!-- Configuration pour l'écran d'accueil du téléphone -->
+    <!-- Configuration PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#060B26">
     <link rel="apple-touch-icon" href="icon.png">
@@ -13,15 +13,14 @@
 
     <style>
         :root {
-            /* NOUVELLES COULEURS BASÉES SUR TON LOGO BLEU MARINE */
-            --bg-color: #060B26;       /* Fond principal bleu nuit */
-            --card-bg: #111633;        /* Cartes et menus légèrement plus clairs */
+            --bg-color: #060B26;
+            --card-bg: #111633;
             --text-main: #ffffff;
             --text-muted: #8e96b3;
             --accent-green: #4CAF50;
             --accent-red: #f44336;
             --accent-blue: #2196F3;
-            --border-color: #232a4d;   /* Bordures discrètes */
+            --border-color: #232a4d;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding-bottom: 70px; }
@@ -86,7 +85,8 @@
         .col-pts { width: 30px; font-weight: bold; color: var(--accent-green); }
 
         .input-key { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid var(--border-color); border-radius: 8px; font-size: 16px; background: var(--bg-color); color: white; }
-        .btn-save { background: var(--accent-green); color: white; padding: 15px; border: none; border-radius: 8px; width: 100%; font-weight: bold; font-size: 16px; }
+        .btn-save { background: var(--accent-green); color: white; padding: 15px; border: none; border-radius: 8px; width: 100%; font-weight: bold; font-size: 16px; transition: 0.2s; }
+        .btn-save:disabled { opacity: 0.7; }
         
         .bottom-nav { position: fixed; bottom: 0; width: 100%; background: var(--card-bg); display: flex; border-top: 1px solid var(--border-color); z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
         .nav-btn { flex: 1; padding: 12px 0; text-align: center; font-size: 11px; font-weight: bold; color: var(--text-muted); border: none; background: transparent; display: flex; justify-content: center; align-items: center; gap: 6px; }
@@ -134,6 +134,7 @@
         let TODAY = new Date().toISOString().split('T')[0];
         let YESTERDAY = new Date(Date.now() - 86400000).toISOString().split('T')[0]; 
         let SELECTED_DATE = TODAY;
+        
         const TOP_LEAGUES_IDS = [61, 39, 140, 135, 78, 2]; 
 
         const LEAGUES = [
@@ -146,10 +147,11 @@
             { id: 2, name: 'Ligue des Champions', flag: '🏆' }
         ];
 
+        // 3 Proxys de secours pour éviter les erreurs
         const PROXIES = [
-            'https://corsproxy.io/?',
-            'https://api.codetabs.com/v1/proxy?quest=',
-            'https://api.allorigins.win/raw?url='
+            (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+            (url) => `https://api.codetabs.com/v1/proxy?quest=${url}`
         ];
 
         async function apiCall(endpoint, params = {}) {
@@ -158,29 +160,29 @@
             const targetUrl = `https://v3.football.api-sports.io/${endpoint}?${query}`;
             let lastError = null;
 
-            for (let proxy of PROXIES) {
+            for (let getProxyUrl of PROXIES) {
                 try {
-                    const finalUrl = proxy + encodeURIComponent(targetUrl);
+                    const finalUrl = getProxyUrl(targetUrl);
                     const response = await fetch(finalUrl, { method: 'GET', headers: { 'x-apisports-key': API_KEY } });
                     if (!response.ok) continue;
+                    
                     const data = await response.json();
-                    if (data.errors && Object.keys(data.errors).length > 0) throw new Error(JSON.stringify(data.errors));
+                    if (data.errors && Object.keys(data.errors).length > 0) {
+                        throw new Error(JSON.stringify(data.errors)); 
+                    }
                     return data.response; 
                 } catch (e) {
                     lastError = e;
                 }
             }
-            throw new Error("Impossible de joindre l'API.");
+            if (lastError && lastError.message.includes("{")) { throw new Error(lastError.message); }
+            throw new Error("Connexion impossible. Quota dépassé ou problème réseau.");
         }
 
         function updateLiveBadge(count) {
             const badge = document.getElementById('live-badge');
-            if (count > 0) {
-                badge.innerText = count;
-                badge.style.display = 'inline-block';
-            } else {
-                badge.style.display = 'none';
-            }
+            if (count > 0) { badge.innerText = count; badge.style.display = 'inline-block'; } 
+            else { badge.style.display = 'none'; }
         }
 
         function renderLeagueMenu() {
@@ -362,6 +364,7 @@
         }
 
         function goBack() { IS_DETAIL_VIEW = false; document.getElementById('btn-back').style.display = 'none'; loadTab(CURRENT_TAB, document.querySelector('.nav-btn.active')); }
+        
         function renderStandings(standings) {
             const content = document.getElementById('app-content');
             if (!standings || standings.length === 0) { content.innerHTML = '<div class="card">Non disponible.</div>'; return; }
@@ -369,13 +372,81 @@
             standings.forEach(row => { html += `<div class="standing-row"><div class="col-rank">${row.rank}</div><div class="col-team"><img src="${row.team.logo}">${row.team.name}</div><div class="col-stat">${row.all.played}</div><div class="col-stat">${row.all.win}</div><div class="col-stat">${row.all.draw}</div><div class="col-stat">${row.all.lose}</div><div class="col-stat">${row.goalsDiff}</div><div class="col-pts">${row.points}</div></div>`; });
             content.innerHTML = html + '</div>';
         }
+
+        // --- CONFIGURATION ET TEST DE LA CLÉ ---
         function renderSettings() {
-            document.getElementById('app-content').innerHTML = `<div class="card"><h3 style="color:var(--accent-green);">⚙️ Configuration</h3><p style="font-size:14px; color:var(--text-muted);">Votre clé API.</p><input type="text" id="api-key-input" class="input-key" value="${API_KEY}"><button class="btn-save" onclick="saveApiKey()">Enregistrer</button></div>`;
+            document.getElementById('app-content').innerHTML = `
+                <div class="card">
+                    <h3 style="color:var(--accent-green); margin-bottom:10px;">⚙️ Clé API</h3>
+                    <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">Collez votre clé API-Football. Elle sera sauvegardée et testée immédiatement.</p>
+                    <input type="text" id="api-key-input" class="input-key" value="${API_KEY}" placeholder="Collez votre clé ici...">
+                    <button class="btn-save" id="btn-save-key" onclick="saveApiKey()">Activer la clé</button>
+                    <div id="key-status" style="margin-top:15px; text-align:center; font-weight:bold; font-size:14px;"></div>
+                </div>`;
         }
-        function saveApiKey() {
+
+        async function saveApiKey() {
             const val = document.getElementById('api-key-input').value.trim();
-            if (val) { API_KEY = val; localStorage.setItem('football_api_key', val); alert("Clé sauvegardée !"); }
+            const btn = document.getElementById('btn-save-key');
+            const statusDiv = document.getElementById('key-status');
+
+            if (!val) {
+                statusDiv.innerHTML = '<span style="color:var(--accent-red);">❌ Veuillez entrer une clé.</span>';
+                return;
+            }
+
+            API_KEY = val;
+            localStorage.setItem('football_api_key', val);
+
+            btn.innerText = 'Vérification en cours...';
+            btn.disabled = true;
+            statusDiv.innerHTML = '<span style="color:var(--accent-blue);">⏳ Test de la connexion...</span>';
+
+            try {
+                const targetUrl = `https://v3.football.api-sports.io/status`;
+                let success = false;
+                let errorMsg = "";
+
+                for (let getProxyUrl of PROXIES) {
+                    try {
+                        const finalUrl = getProxyUrl(targetUrl);
+                        const response = await fetch(finalUrl, { method: 'GET', headers: { 'x-apisports-key': API_KEY } });
+                        if (!response.ok) continue;
+                        
+                        const data = await response.json();
+                        
+                        if (data.errors && Object.keys(data.errors).length > 0) {
+                            throw new Error(JSON.stringify(data.errors));
+                        }
+                        
+                        if (data.response && data.response.subscription) {
+                            success = true;
+                            const req = data.response.requests;
+                            const remaining = req.limit_day - req.current;
+                            statusDiv.innerHTML = `<span style="color:var(--accent-green);">✅ Clé activée avec succès !<br><span style="font-size:12px; font-weight:normal; color:var(--text-muted);">Requêtes restantes aujourd'hui : ${remaining}</span></span>`;
+                            break;
+                        }
+                    } catch (e) {
+                        errorMsg = e.message;
+                    }
+                }
+
+                if (success) {
+                    setTimeout(() => {
+                        loadTab('live', document.querySelector('.nav-btn'));
+                    }, 2000);
+                } else {
+                    throw new Error(errorMsg || "Clé invalide ou quota dépassé.");
+                }
+
+            } catch (error) {
+                statusDiv.innerHTML = `<span style="color:var(--accent-red); font-size:12px;">❌ Erreur : ${error.message}</span>`;
+            } finally {
+                btn.innerText = 'Activer la clé';
+                btn.disabled = false;
+            }
         }
+
         window.onload = () => { if (!API_KEY) loadTab('settings', document.querySelectorAll('.nav-btn')[5]); else loadTab('live', document.querySelector('.nav-btn')); };
     </script>
 </body>
