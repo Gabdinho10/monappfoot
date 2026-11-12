@@ -44,9 +44,8 @@
         .league-header { font-size: 12px; font-weight: bold; padding: 10px 5px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
         .league-header.top-league { color: var(--accent-green); }
         .league-header.other-league { color: var(--accent-blue); }
-        .league-header img { width: 18px; height: 18px; }
 
-        .match-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+        .match-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
         .match-row:last-child { border-bottom: none; }
         .team-col { flex: 1; display: flex; align-items: center; font-size: 13px; font-weight: 600; }
         .team-home { justify-content: flex-end; text-align: right; padding-right: 10px; }
@@ -60,21 +59,6 @@
         .time-col.live { color: var(--accent-red); }
         .time-col.finished { color: var(--text-muted); font-size: 10px; }
 
-        .ai-header { text-align: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
-        .ai-prob-row { display: flex; justify-content: space-around; text-align: center; margin-bottom: 15px; }
-        .ai-prob-box { font-size: 22px; font-weight: bold; }
-        .ai-prob-label { font-size: 12px; color: var(--text-muted); font-weight: normal; }
-        details { background: var(--bg-color); border-radius: 8px; margin-bottom: 10px; overflow: hidden; border: 1px solid var(--border-color); }
-        summary { padding: 15px; font-weight: bold; font-size: 14px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
-        summary::-webkit-details-marker { display: none; }
-        summary::after { content: '+'; font-size: 18px; color: var(--accent-green); }
-        details[open] summary::after { content: '-'; }
-        .stat-row { display: flex; justify-content: space-between; padding: 10px 15px; border-top: 1px solid var(--border-color); font-size: 13px; align-items: center; }
-        .stat-name { flex: 1; color: var(--text-muted); }
-        .stat-val { font-weight: bold; width: 50px; text-align: right; }
-        .val-green { color: var(--accent-green); }
-        .val-red { color: var(--accent-red); }
-
         .table-header, .standing-row { display: flex; align-items: center; padding: 10px 5px; font-size: 12px; text-align: center; }
         .table-header { color: var(--text-muted); font-weight: bold; border-bottom: 1px solid var(--border-color); }
         .standing-row { border-bottom: 1px solid var(--border-color); }
@@ -84,10 +68,6 @@
         .col-stat { width: 25px; }
         .col-pts { width: 30px; font-weight: bold; color: var(--accent-green); }
 
-        .input-key { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid var(--border-color); border-radius: 8px; font-size: 16px; background: var(--bg-color); color: white; }
-        .btn-save { background: var(--accent-green); color: white; padding: 15px; border: none; border-radius: 8px; width: 100%; font-weight: bold; font-size: 16px; transition: 0.2s; }
-        .btn-save:disabled { opacity: 0.7; }
-        
         .bottom-nav { position: fixed; bottom: 0; width: 100%; background: var(--card-bg); display: flex; border-top: 1px solid var(--border-color); z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
         .nav-btn { flex: 1; padding: 12px 0; text-align: center; font-size: 11px; font-weight: bold; color: var(--text-muted); border: none; background: transparent; display: flex; justify-content: center; align-items: center; gap: 6px; }
         .nav-btn.active { color: var(--accent-green); border-top: 2px solid var(--accent-green); background: var(--bg-color); }
@@ -101,9 +81,8 @@
 <body>
 
     <div class="header">
-        <button class="header-back" id="btn-back" onclick="goBack()">←</button>
-        <img src="logo.png" alt="Score Sports" class="app-logo" id="header-logo">
-        <span id="header-title" style="display:none;">Score Sports</span>
+        <span></span>
+        <img src="logo.png" alt="Score Sports" class="app-logo">
         <span></span>
     </div>
 
@@ -120,63 +99,37 @@
         <button class="nav-btn active" onclick="loadTab('live', this)">Direct <span id="live-badge" class="badge">0</span></button>
         <button class="nav-btn" onclick="loadTab('calendar', this)">Calendrier</button>
         <button class="nav-btn" onclick="loadTab('results', this)">Résultats</button>
-        <button class="nav-btn" onclick="loadTab('ai', this)">Analyse</button>
         <button class="nav-btn" onclick="loadTab('standings', this)">Classement</button>
-        <button class="nav-btn" onclick="loadTab('settings', this)">Clé</button>
     </div>
 
     <script>
-        let API_KEY = localStorage.getItem('football_api_key') || '';
         let CURRENT_TAB = 'live';
         let CURRENT_LEAGUE = 'all'; 
-        let CURRENT_SEASON = 2024;
-        let IS_DETAIL_VIEW = false;
         let TODAY = new Date().toISOString().split('T')[0];
         let YESTERDAY = new Date(Date.now() - 86400000).toISOString().split('T')[0]; 
         let SELECTED_DATE = TODAY;
-        
-        const TOP_LEAGUES_IDS = [61, 39, 140, 135, 78, 2]; 
+
+        // IDs des grands championnats sur TheSportsDB
+        const TOP_LEAGUES_IDS = ["4334", "4328", "4335", "4332", "4331", "4480"]; 
+        const TOP_LEAGUES_NAMES = ["Ligue 1", "English Premier League", "Spanish La Liga", "Italian Serie A", "German Bundesliga", "UEFA Champions League"];
 
         const LEAGUES = [
             { id: 'all', name: 'Toutes les ligues', flag: '🌍' },
-            { id: 61, name: 'Ligue 1', flag: '🇫🇷' }, 
-            { id: 39, name: 'Premier League', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-            { id: 140, name: 'Liga', flag: '🇪🇸' }, 
-            { id: 135, name: 'Serie A', flag: '🇮🇹' },
-            { id: 78, name: 'Bundesliga', flag: '🇩🇪' }, 
-            { id: 2, name: 'Ligue des Champions', flag: '🏆' }
+            { id: '4334', name: 'Ligue 1', flag: '🇫🇷' }, 
+            { id: '4328', name: 'Premier League', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+            { id: '4335', name: 'Liga', flag: '🇪🇸' }, 
+            { id: '4332', name: 'Serie A', flag: '🇮🇹' },
+            { id: '4331', name: 'Bundesliga', flag: '🇩🇪' }, 
+            { id: '4480', name: 'Ligue des Champions', flag: '🏆' }
         ];
 
-        // 3 Proxys de secours pour éviter les erreurs
-        const PROXIES = [
-            (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            (url) => `https://api.codetabs.com/v1/proxy?quest=${url}`
-        ];
+        // API TheSportsDB (Gratuite, sans clé)
+        const BASE_URL = 'https://www.thesportsdb.com/api/v1/json/3/';
 
-        async function apiCall(endpoint, params = {}) {
-            if (!API_KEY) throw new Error("Veuillez configurer votre clé API.");
-            const query = new URLSearchParams(params).toString();
-            const targetUrl = `https://v3.football.api-sports.io/${endpoint}?${query}`;
-            let lastError = null;
-
-            for (let getProxyUrl of PROXIES) {
-                try {
-                    const finalUrl = getProxyUrl(targetUrl);
-                    const response = await fetch(finalUrl, { method: 'GET', headers: { 'x-apisports-key': API_KEY } });
-                    if (!response.ok) continue;
-                    
-                    const data = await response.json();
-                    if (data.errors && Object.keys(data.errors).length > 0) {
-                        throw new Error(JSON.stringify(data.errors)); 
-                    }
-                    return data.response; 
-                } catch (e) {
-                    lastError = e;
-                }
-            }
-            if (lastError && lastError.message.includes("{")) { throw new Error(lastError.message); }
-            throw new Error("Connexion impossible. Quota dépassé ou problème réseau.");
+        async function apiCall(endpoint) {
+            const response = await fetch(BASE_URL + endpoint);
+            if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
+            return await response.json();
         }
 
         function updateLiveBadge(count) {
@@ -187,7 +140,7 @@
 
         function renderLeagueMenu() {
             const menu = document.getElementById('league-menu');
-            if (IS_DETAIL_VIEW || CURRENT_TAB === 'settings') { menu.style.display = 'none'; return; }
+            if (CURRENT_TAB === 'standings') { menu.style.display = 'flex'; return; }
             menu.style.display = 'flex';
             menu.innerHTML = LEAGUES.map(l => `<button class="league-btn ${l.id === CURRENT_LEAGUE ? 'active' : ''}" onclick="changeLeague('${l.id}')">${l.flag} ${l.name}</button>`).join('');
         }
@@ -196,10 +149,7 @@
         function changeDate(val) { SELECTED_DATE = val; loadTab(CURRENT_TAB, document.querySelector('.nav-btn.active')); }
 
         async function loadTab(tab, btn) {
-            CURRENT_TAB = tab; IS_DETAIL_VIEW = false;
-            document.getElementById('btn-back').style.display = 'none';
-            document.getElementById('header-logo').style.display = 'block';
-            document.getElementById('header-title').style.display = 'none';
+            CURRENT_TAB = tab;
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             if(btn) btn.classList.add('active');
             renderLeagueMenu();
@@ -210,86 +160,96 @@
             else { dateSelector.style.display = 'none'; }
             
             const content = document.getElementById('app-content');
-            if (tab === 'settings') { renderSettings(); return; }
-            if (!API_KEY) { content.innerHTML = '<div class="error-box">Veuillez configurer votre clé API.</div>'; return; }
             content.innerHTML = '<div class="loader">Chargement...</div>';
             
             try {
-                let params = { season: CURRENT_SEASON };
-                if (CURRENT_LEAGUE !== 'all') params.league = CURRENT_LEAGUE;
-                
-                if (tab === 'live') {
-                    params.live = 'all';
-                    let matches = await apiCall('fixtures', params);
-                    updateLiveBadge(matches.length);
+                if (tab === 'standings') {
+                    if (CURRENT_LEAGUE === 'all') { content.innerHTML = '<div class="card">Veuillez sélectionner un championnat spécifique.</div>'; return; }
+                    const data = await apiCall(`lookuptable.php?l=${CURRENT_LEAGUE}&s=2024-2025`);
+                    renderStandings(data.table || []);
+                } 
+                else {
+                    const dateToFetch = (tab === 'live') ? TODAY : SELECTED_DATE;
+                    const data = await apiCall(`eventsday.php?d=${dateToFetch}&s=Soccer`);
+                    let matches = data.events || [];
 
-                    if (matches.length === 0) {
-                        params = { date: TODAY, season: CURRENT_SEASON };
-                        if (CURRENT_LEAGUE !== 'all') params.league = CURRENT_LEAGUE;
-                        matches = await apiCall('fixtures', params);
-                        renderMatchesGrouped(matches, false, "Aucun match en direct. Matchs du jour :");
-                    } else { renderMatchesGrouped(matches, false, "Matchs en direct :"); }
-                } 
-                else if (tab === 'calendar' || tab === 'results') {
-                    params.date = SELECTED_DATE;
-                    let matches = await apiCall('fixtures', params);
-                    if (tab === 'results') {
-                        matches = matches.filter(m => ['FT', 'AET', 'PEN'].includes(m.fixture.status.short));
-                        if (matches.length === 0) { content.innerHTML = '<div class="card">Aucun match terminé trouvé.</div>'; return; }
-                        renderMatchesGrouped(matches, false, `Résultats du ${new Date(SELECTED_DATE).toLocaleDateString('fr-FR')}`);
-                    } else { renderMatchesGrouped(matches, false, null); }
-                }
-                else if (tab === 'ai') {
-                    params.date = TODAY;
-                    let matches = await apiCall('fixtures', params);
-                    renderMatchesGrouped(matches, true, "Sélectionnez un match pour l'Analyse IA");
-                } 
-                else if (tab === 'standings') {
-                    if (CURRENT_LEAGUE === 'all') { content.innerHTML = '<div class="card">Veuillez sélectionner un championnat.</div>'; return; }
-                    let standings = await apiCall('standings', { league: CURRENT_LEAGUE, season: CURRENT_SEASON });
-                    renderStandings(standings[0]?.league?.standings[0] || []);
+                    // Filtrer par ligue si sélectionnée
+                    if (CURRENT_LEAGUE !== 'all') {
+                        const leagueName = LEAGUES.find(l => l.id === CURRENT_LEAGUE).name;
+                        matches = matches.filter(m => m.strLeague.includes(leagueName) || m.idLeague === CURRENT_LEAGUE);
+                    }
+
+                    if (tab === 'live') {
+                        // Mettre à jour le badge
+                        updateLiveBadge(matches.length);
+                        if (matches.length === 0) content.innerHTML = '<div class="card" style="text-align:center;">Aucun match aujourd\'hui.</div>';
+                        else renderMatchesGrouped(matches, "Matchs du jour :");
+                    } 
+                    else if (tab === 'results') {
+                        const finished = matches.filter(m => m.strStatus === 'Match Finished');
+                        if (finished.length === 0) content.innerHTML = '<div class="card" style="text-align:center;">Aucun match terminé trouvé.</div>';
+                        else renderMatchesGrouped(finished, `Résultats du ${new Date(SELECTED_DATE).toLocaleDateString('fr-FR')}`);
+                    } 
+                    else if (tab === 'calendar') {
+                        if (matches.length === 0) content.innerHTML = '<div class="card" style="text-align:center;">Aucun match trouvé.</div>';
+                        else renderMatchesGrouped(matches, `Matchs du ${new Date(SELECTED_DATE).toLocaleDateString('fr-FR')}`);
+                    }
                 }
             } catch (error) { content.innerHTML = `<div class="error-box">Erreur : ${error.message}</div>`; }
         }
 
-        function renderMatchesGrouped(matches, isAIMode, customTitle) {
+        function renderMatchesGrouped(matches, customTitle) {
             const content = document.getElementById('app-content');
-            if (matches.length === 0) { content.innerHTML = '<div class="card">Aucun match trouvé.</div>'; return; }
             let html = '';
             if (customTitle) html += `<h3 style="font-size:14px; margin-bottom:10px; color:var(--text-muted); text-align:center;">${customTitle}</h3>`;
+            
             const grouped = {};
             matches.forEach(m => {
-                const lName = `${m.league.name} (${m.league.country})`;
-                if (!grouped[lName]) grouped[lName] = { logo: m.league.logo, matches: [], leagueId: m.league.id };
+                const lName = m.strLeague;
+                if (!grouped[lName]) grouped[lName] = { leagueId: m.idLeague, matches: [] };
                 grouped[lName].matches.push(m);
             });
+
             const groupedArray = Object.entries(grouped);
+
+            // Tri : Grands championnats en premier
             groupedArray.sort((a, b) => {
-                const isTopA = TOP_LEAGUES_IDS.includes(a[1].leagueId);
-                const isTopB = TOP_LEAGUES_IDS.includes(b[1].leagueId);
-                if (isTopA && isTopB) return TOP_LEAGUES_IDS.indexOf(a[1].leagueId) - TOP_LEAGUES_IDS.indexOf(b[1].leagueId);
+                const isTopA = TOP_LEAGUES_NAMES.includes(a[0]) || TOP_LEAGUES_IDS.includes(a[1].leagueId);
+                const isTopB = TOP_LEAGUES_NAMES.includes(b[0]) || TOP_LEAGUES_IDS.includes(b[1].leagueId);
+                if (isTopA && isTopB) return a[0].localeCompare(b[0]);
                 if (isTopA) return -1; if (isTopB) return 1;
                 return a[0].localeCompare(b[0]);
             });
-            groupedArray.forEach(([lName, data]) => { data.matches.sort((a, b) => new Date(a.fixture.date) - new Date(b.fixture.date)); });
+
             groupedArray.forEach(([lName, data]) => {
-                const isTop = TOP_LEAGUES_IDS.includes(data.leagueId);
-                const star = isTop ? '⭐ ' : ''; const headerClass = isTop ? 'top-league' : 'other-league';
-                html += `<div class="league-group"><div class="league-header ${headerClass}"><img src="${data.logo}"> ${star}${lName}</div><div class="card" style="padding: 5px 15px;">`;
+                const isTop = TOP_LEAGUES_NAMES.includes(lName) || TOP_LEAGUES_IDS.includes(data.leagueId);
+                const star = isTop ? '⭐ ' : ''; 
+                const headerClass = isTop ? 'top-league' : 'other-league';
+
+                html += `<div class="league-group">
+                    <div class="league-header ${headerClass}">${star}${lName}</div>
+                    <div class="card" style="padding: 5px 15px;">`;
+                
                 data.matches.forEach(match => {
-                    const statusShort = match.fixture.status.short;
-                    const isLive = ['1H', '2H', 'HT', 'ET', 'P'].includes(statusShort);
-                    const isFinished = ['FT', 'AET', 'PEN'].includes(statusShort);
-                    let timeStr = new Date(match.fixture.date).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'});
+                    const isFinished = match.strStatus === 'Match Finished';
+                    const isLive = ['1H', '2H', 'HT'].includes(match.strStatus) || match.strProgress;
+                    
+                    let timeStr = match.strTime ? match.strTime.substring(0, 5) : '-';
                     let timeClass = '';
-                    if (isLive) { timeStr = `${match.fixture.status.elapsed}'`; timeClass = 'live'; }
+                    if (isLive) { timeStr = match.strProgress || 'LIVE'; timeClass = 'live'; }
                     if (isFinished) { timeStr = 'Term.'; timeClass = 'finished'; }
-                    const scoreStr = (statusShort === 'NS') ? '-' : `${match.goals.home ?? 0} - ${match.goals.away ?? 0}`;
-                    html += `<div class="match-row" onclick="openAIAnalysis(${match.fixture.id}, '${match.teams.home.name}', '${match.teams.away.name}')">
+
+                    const scoreStr = (match.intHomeScore !== null) ? `${match.intHomeScore} - ${match.intAwayScore}` : '-';
+                    
+                    // Logos : TheSportsDB renvoie parfois des liens, parfois rien
+                    const homeLogo = match.strHomeTeamBadge ? `<img src="${match.strHomeTeamBadge}">` : '';
+                    const awayLogo = match.strAwayTeamBadge ? `<img src="${match.strAwayTeamBadge}">` : '';
+
+                    html += `<div class="match-row">
                             <div class="time-col ${timeClass}">${timeStr}</div>
-                            <div class="team-col team-home">${match.teams.home.name} <img src="${match.teams.home.logo}"></div>
+                            <div class="team-col team-home">${match.strHomeTeam} ${homeLogo}</div>
                             <div class="score-col">${scoreStr}</div>
-                            <div class="team-col team-away"><img src="${match.teams.away.logo}"> ${match.teams.away.name}</div>
+                            <div class="team-col team-away">${awayLogo} ${match.strAwayTeam}</div>
                         </div>`;
                 });
                 html += `</div></div>`;
@@ -297,157 +257,37 @@
             content.innerHTML = html;
         }
 
-        async function openAIAnalysis(fixtureId, home, away) {
-            IS_DETAIL_VIEW = true;
-            document.getElementById('league-menu').style.display = 'none';
-            document.getElementById('date-selector').style.display = 'none';
-            document.getElementById('header-logo').style.display = 'none';
-            document.getElementById('header-title').style.display = 'block';
-            document.getElementById('header-title').innerText = `IA: ${home} vs ${away}`;
-            document.getElementById('btn-back').style.display = 'block';
-            const content = document.getElementById('app-content');
-            content.innerHTML = '<div class="loader">L\'IA analyse le match...</div>';
-            try {
-                const predData = await apiCall('predictions', { fixture: fixtureId });
-                const pred = predData[0]?.predictions;
-                let pHome = pred?.percent?.home ? parseInt(pred.percent.home) / 100 : 0.33;
-                let pDraw = pred?.percent?.draw ? parseInt(pred.percent.draw) / 100 : 0.33;
-                let pAway = pred?.percent?.away ? parseInt(pred.percent.away) / 100 : 0.33;
-                let total = pHome + pDraw + pAway;
-                pHome = pHome / total; pDraw = pDraw / total; pAway = pAway / total;
-                const seed = fixtureId; function pseudoRandom(offset) { return Math.abs(Math.sin(seed + offset)); }
-                const baseGoalsHome = (pHome * 2.5) + (pDraw * 1.2) + (pAway * 0.8);
-                const baseGoalsAway = (pAway * 2.5) + (pDraw * 1.2) + (pHome * 0.8);
-                const totalGoalsExp = baseGoalsHome + baseGoalsAway;
-                const bttsYes = pred?.btts?.yes ? parseInt(pred.btts.yes) / 100 : Math.min(0.85, totalGoalsExp / 4);
-                const fmt = (val) => Math.round(val * 100) + '%';
-                const calcOver = (threshold, expected) => { return Math.min(0.95, Math.max(0.05, 1 - Math.exp(-expected + threshold))); };
-                let html = `<div class="ai-header"><div class="ai-prob-row">
-                            <div class="ai-prob-box" style="color:var(--accent-green);">${fmt(pHome)}<div class="ai-prob-label">Victoire 1</div></div>
-                            <div class="ai-prob-box" style="color:#FFC107;">${fmt(pDraw)}<div class="ai-prob-label">Match Nul</div></div>
-                            <div class="ai-prob-box" style="color:var(--accent-red);">${fmt(pAway)}<div class="ai-prob-label">Victoire 2</div></div>
-                        </div></div>
-                    <details open><summary>🛡️ Double Chance</summary>
-                        <div class="stat-row"><div class="stat-name">1 ou X (${home} ou Nul)</div><div class="stat-val val-green">${fmt(pHome + pDraw)}</div></div>
-                        <div class="stat-row"><div class="stat-name">1 ou 2 (Une des 2 gagne)</div><div class="stat-val val-green">${fmt(pHome + pAway)}</div></div>
-                        <div class="stat-row"><div class="stat-name">X ou 2 (Nul ou ${away})</div><div class="stat-val val-green">${fmt(pDraw + pAway)}</div></div>
-                    </details>
-                    <details open><summary>⚽ Les deux équipes marquent</summary>
-                        <div class="stat-row"><div class="stat-name">OUI</div><div class="stat-val val-green">${fmt(bttsYes)}</div></div>
-                        <div class="stat-row"><div class="stat-name">NON</div><div class="stat-val val-red">${fmt(1 - bttsYes)}</div></div>
-                    </details>
-                    <details><summary>🥅 Total Buts Match (Plus / Moins)</summary>
-                        ${[0.5, 1.5, 2.5, 3.5, 4.5].map(g => { let over = calcOver(g, totalGoalsExp); return `<div class="stat-row"><div class="stat-name">Plus de ${g}</div><div class="stat-val val-green">${fmt(over)}</div></div><div class="stat-row" style="border-top:none; padding-top:0;"><div class="stat-name">Moins de ${g}</div><div class="stat-val val-red">${fmt(1 - over)}</div></div>`; }).join('')}
-                    </details>
-                    <details><summary>🏠 Buts ${home} (Plus / Moins)</summary>
-                        ${[0.5, 1.5, 2.5].map(g => { let over = calcOver(g, baseGoalsHome); return `<div class="stat-row"><div class="stat-name">Plus de ${g}</div><div class="stat-val val-green">${fmt(over)}</div></div><div class="stat-row" style="border-top:none; padding-top:0;"><div class="stat-name">Moins de ${g}</div><div class="stat-val val-red">${fmt(1 - over)}</div></div>`; }).join('')}
-                    </details>
-                    <details><summary>✈️ Buts ${away} (Plus / Moins)</summary>
-                        ${[0.5, 1.5, 2.5].map(g => { let over = calcOver(g, baseGoalsAway); return `<div class="stat-row"><div class="stat-name">Plus de ${g}</div><div class="stat-val val-green">${fmt(over)}</div></div><div class="stat-row" style="border-top:none; padding-top:0;"><div class="stat-name">Moins de ${g}</div><div class="stat-val val-red">${fmt(1 - over)}</div></div>`; }).join('')}
-                    </details>
-                    <details><summary>🎯 Tirs & Tirs Cadrés</summary>
-                        <div class="stat-row"><div class="stat-name">Plus de 22.5 tirs (Total)</div><div class="stat-val val-green">${fmt(0.45 + (pseudoRandom(1)*0.2))}</div></div>
-                        <div class="stat-row"><div class="stat-name">Plus de 8.5 tirs cadrés</div><div class="stat-val val-green">${fmt(0.50 + (pseudoRandom(2)*0.15))}</div></div>
-                    </details>
-                    <details><summary>🛑 Fautes</summary>
-                        <div class="stat-row"><div class="stat-name">${home} - Plus de 12.5</div><div class="stat-val val-green">${fmt(0.4 + (pseudoRandom(3)*0.2))}</div></div>
-                        <div class="stat-row"><div class="stat-name">${away} - Plus de 12.5</div><div class="stat-val val-green">${fmt(0.45 + (pseudoRandom(4)*0.2))}</div></div>
-                        <div class="stat-row"><div class="stat-name">Total - Plus de 25.5</div><div class="stat-val val-green">${fmt(0.55 + (pseudoRandom(5)*0.2))}</div></div>
-                    </details>
-                    <details><summary>🚩 Corners</summary>
-                        <div class="stat-row"><div class="stat-name">${home} - Plus de 4.5</div><div class="stat-val val-green">${fmt(0.5 + (pseudoRandom(6)*0.25))}</div></div>
-                        <div class="stat-row"><div class="stat-name">${away} - Plus de 4.5</div><div class="stat-val val-green">${fmt(0.45 + (pseudoRandom(7)*0.25))}</div></div>
-                        <div class="stat-row"><div class="stat-name">Total - Plus de 9.5</div><div class="stat-val val-green">${fmt(0.6 + (pseudoRandom(8)*0.2))}</div></div>
-                    </details>`;
-                content.innerHTML = html;
-            } catch (e) { content.innerHTML = `<div class="error-box">Erreur d'analyse : ${e.message}</div>`; }
-        }
-
-        function goBack() { IS_DETAIL_VIEW = false; document.getElementById('btn-back').style.display = 'none'; loadTab(CURRENT_TAB, document.querySelector('.nav-btn.active')); }
-        
         function renderStandings(standings) {
             const content = document.getElementById('app-content');
-            if (!standings || standings.length === 0) { content.innerHTML = '<div class="card">Non disponible.</div>'; return; }
-            let html = `<div class="card" style="padding: 10px 0;"><div class="table-header"><div class="col-rank">#</div><div class="col-team">Équipe</div><div class="col-stat">MJ</div><div class="col-stat">G</div><div class="col-stat">N</div><div class="col-stat">P</div><div class="col-stat">+/-</div><div class="col-pts">Pts</div></div>`;
-            standings.forEach(row => { html += `<div class="standing-row"><div class="col-rank">${row.rank}</div><div class="col-team"><img src="${row.team.logo}">${row.team.name}</div><div class="col-stat">${row.all.played}</div><div class="col-stat">${row.all.win}</div><div class="col-stat">${row.all.draw}</div><div class="col-stat">${row.all.lose}</div><div class="col-stat">${row.goalsDiff}</div><div class="col-pts">${row.points}</div></div>`; });
+            if (!standings || standings.length === 0) { content.innerHTML = '<div class="card">Classement non disponible.</div>'; return; }
+            
+            let html = `<div class="card" style="padding: 10px 0;">
+                <div class="table-header">
+                    <div class="col-rank">#</div>
+                    <div class="col-team">Équipe</div>
+                    <div class="col-stat">MJ</div>
+                    <div class="col-stat">G</div>
+                    <div class="col-stat">N</div>
+                    <div class="col-stat">P</div>
+                    <div class="col-pts">Pts</div>
+                </div>`;
+            
+            standings.forEach(row => {
+                html += `<div class="standing-row">
+                    <div class="col-rank">${row.intRank}</div>
+                    <div class="col-team">${row.strTeam}</div>
+                    <div class="col-stat">${row.intPlayed}</div>
+                    <div class="col-stat">${row.intWin}</div>
+                    <div class="col-stat">${row.intDraw}</div>
+                    <div class="col-stat">${row.intLoss}</div>
+                    <div class="col-pts">${row.intPoints}</div>
+                </div>`;
+            });
             content.innerHTML = html + '</div>';
         }
 
-        // --- CONFIGURATION ET TEST DE LA CLÉ ---
-        function renderSettings() {
-            document.getElementById('app-content').innerHTML = `
-                <div class="card">
-                    <h3 style="color:var(--accent-green); margin-bottom:10px;">⚙️ Clé API</h3>
-                    <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">Collez votre clé API-Football. Elle sera sauvegardée et testée immédiatement.</p>
-                    <input type="text" id="api-key-input" class="input-key" value="${API_KEY}" placeholder="Collez votre clé ici...">
-                    <button class="btn-save" id="btn-save-key" onclick="saveApiKey()">Activer la clé</button>
-                    <div id="key-status" style="margin-top:15px; text-align:center; font-weight:bold; font-size:14px;"></div>
-                </div>`;
-        }
-
-        async function saveApiKey() {
-            const val = document.getElementById('api-key-input').value.trim();
-            const btn = document.getElementById('btn-save-key');
-            const statusDiv = document.getElementById('key-status');
-
-            if (!val) {
-                statusDiv.innerHTML = '<span style="color:var(--accent-red);">❌ Veuillez entrer une clé.</span>';
-                return;
-            }
-
-            API_KEY = val;
-            localStorage.setItem('football_api_key', val);
-
-            btn.innerText = 'Vérification en cours...';
-            btn.disabled = true;
-            statusDiv.innerHTML = '<span style="color:var(--accent-blue);">⏳ Test de la connexion...</span>';
-
-            try {
-                const targetUrl = `https://v3.football.api-sports.io/status`;
-                let success = false;
-                let errorMsg = "";
-
-                for (let getProxyUrl of PROXIES) {
-                    try {
-                        const finalUrl = getProxyUrl(targetUrl);
-                        const response = await fetch(finalUrl, { method: 'GET', headers: { 'x-apisports-key': API_KEY } });
-                        if (!response.ok) continue;
-                        
-                        const data = await response.json();
-                        
-                        if (data.errors && Object.keys(data.errors).length > 0) {
-                            throw new Error(JSON.stringify(data.errors));
-                        }
-                        
-                        if (data.response && data.response.subscription) {
-                            success = true;
-                            const req = data.response.requests;
-                            const remaining = req.limit_day - req.current;
-                            statusDiv.innerHTML = `<span style="color:var(--accent-green);">✅ Clé activée avec succès !<br><span style="font-size:12px; font-weight:normal; color:var(--text-muted);">Requêtes restantes aujourd'hui : ${remaining}</span></span>`;
-                            break;
-                        }
-                    } catch (e) {
-                        errorMsg = e.message;
-                    }
-                }
-
-                if (success) {
-                    setTimeout(() => {
-                        loadTab('live', document.querySelector('.nav-btn'));
-                    }, 2000);
-                } else {
-                    throw new Error(errorMsg || "Clé invalide ou quota dépassé.");
-                }
-
-            } catch (error) {
-                statusDiv.innerHTML = `<span style="color:var(--accent-red); font-size:12px;">❌ Erreur : ${error.message}</span>`;
-            } finally {
-                btn.innerText = 'Activer la clé';
-                btn.disabled = false;
-            }
-        }
-
-        window.onload = () => { if (!API_KEY) loadTab('settings', document.querySelectorAll('.nav-btn')[5]); else loadTab('live', document.querySelector('.nav-btn')); };
+        // Démarrage
+        window.onload = () => { loadTab('live', document.querySelector('.nav-btn')); };
     </script>
 </body>
 </html>
